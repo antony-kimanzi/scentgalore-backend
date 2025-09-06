@@ -1,6 +1,6 @@
 import query from "../db/index.js";
 
-export async function runMigrations() {
+export default async function runMigrations() {
   try {
     // 1. Users table
 
