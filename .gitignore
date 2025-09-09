@@ -59,16 +59,15 @@ jspm_packages/
 *.swp
 *.swo
 
-# # Prisma
-# /prisma/migrations/
-# !/prisma/migrations/
-# /prisma/migrations/*/
-# !/prisma/migrations/*/
-# /prisma/migrations/*/README.md
-# !/prisma/migrations/*/README.md
-# /prisma/migrations/*/migration.sql
-# !/prisma/migrations/*/migration.sql
-
+# Prisma
+/prisma/migrations/
+!/prisma/migrations/
+/prisma/migrations/*/
+!/prisma/migrations/*/
+/prisma/migrations/*/README.md
+!/prisma/migrations/*/README.md
+/prisma/migrations/*/migration.sql
+!/prisma/migrations/*/migration.sql
 
 # Build outputs
 dist/
