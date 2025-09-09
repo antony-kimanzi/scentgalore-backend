@@ -15,8 +15,8 @@ model User {
   password  String   @db.VarChar(255)
   firstName String   @map("first_name") @db.VarChar(50)
   lastName  String   @map("last_name") @db.VarChar(50)
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
   Cart      Cart?
   order     Order?
 
@@ -31,8 +31,8 @@ model Product {
   price            Decimal    @db.Decimal(10, 2)
   imageUrl         String     @map("iamge_url") @db.VarChar(500)
   category         String     @db.VarChar(100)
-  createdAt        DateTime   @default(now()) @map("created_at")
-  updatedAt        DateTime   @updatedAt @map("updated_at")
+  createdAt        DateTime   @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt        DateTime   @updatedAt @map("updated_at") @db.Timestamp(6)
   CartItems        CartItem?
   OrderItem        OrderItem?
 
@@ -42,8 +42,8 @@ model Product {
 model Cart {
   id        Int      @id @default(autoincrement())
   userId    Int      @unique @map("user_id")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
 
   user      User       @relation(fields: [userId], references: [id])
   CartItems CartItem[]
@@ -57,7 +57,7 @@ model CartItem {
   productId Int      @unique @map("product_id")
   quantity  Int      @default(1)
   price     Decimal  @db.Decimal(10, 2)
-  createdAt DateTime @default(now()) @map("created_at")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
 
   cart    Cart    @relation(fields: [cartId], references: [id])
   product Product @relation(fields: [productId], references: [id])
@@ -72,8 +72,8 @@ model Order {
   status          String      @default("pending") @db.VarChar(50)
   shippingAddress String?     @map("shipping_address") @db.Text
   paymentMethod   String      @map("payment_method") @db.VarChar(100)
-  createdAt       DateTime    @default(now()) @map("created_at")
-  updatedAt       DateTime    @updatedAt @map("updated_at")
+  createdAt       DateTime    @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt       DateTime    @updatedAt @map("updated_at") @db.Timestamp(6)
   orderItems      OrderItem[]
 
   user User @relation(fields: [userId], references: [id])
@@ -87,8 +87,10 @@ model OrderItem {
   productId Int      @unique @map("product_id")
   quantity  Int
   price     Decimal  @db.Decimal(10, 2)
-  createdAt DateTime @default(now()) @map("created_at")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
 
   order   Order   @relation(fields: [orderId], references: [id])
   product Product @relation(fields: [productId], references: [id])
+
+  @@map("order_items")
 }
