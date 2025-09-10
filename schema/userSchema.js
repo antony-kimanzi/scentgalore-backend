@@ -47,3 +47,15 @@ export const loginSchema = z.object({
       "Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character"
     ),
 });
+
+export const updateUserSchema = userSchema.partial().extend({
+  id: z.number().int().positive("Id must be a positive integer"),
+});
+
+export const idParamSchema = z.object({
+  id: z
+    .string()
+    .regex(/^\d+$/, "ID must be a numeric value")
+    .transform((id) => parseInt(id, 10))
+    .refine((id) => id < 0, "ID must be a positive integer"),
+});
