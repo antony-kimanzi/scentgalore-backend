@@ -17,8 +17,10 @@ export const sanitizeInput = (data) => {
   return data;
 };
 
-export const validateEmailUnique = async (email, excludeUserId = null) => {
-  const existingUser = await prisma.user.findUnique({ where: { email } });
+export const validateEmailUnique = async (userEmail, excludeUserId = null) => {
+  const existingUser = await prisma.user.findUnique({
+    where: { email: userEmail },
+  });
 
   if (existingUser && existingUser[id] != excludeUserId) {
     return {
