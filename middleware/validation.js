@@ -11,22 +11,18 @@ export const validateRequest = (schema, part = "body") => {
       next();
     } catch (error) {
       if (error instanceof z.ZodError) {
-        const errors = error.errors.map((err) => ({
-          fields: err.path.join("."),
-          message: err.message,
-          code: err.code,
-        }));
+        // Use Zod's built-in formatting for safety
+        const formattedError = error.format();
 
         return res.status(400).json({
           error: "Validation failed",
-          message: "Check your input data",
-          details: errors,
+          message: "Please check your input data",
+          details: formattedError,
         });
       }
 
-      res
-        .status(500)
-        .json({ error: "Internal server error during validation" });
+      console.error("Unexpected validation error:", error);
+      res.status(500).json({ error: "Internal server error" });
     }
   };
 };
