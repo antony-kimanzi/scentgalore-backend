@@ -1,3 +1,5 @@
+import prisma from "../lib/prisma.js";
+
 export const sanitizeInput = (data) => {
   if (typeof data === "string") {
     return data.trim().replace(/[<>]/g, "");
@@ -15,11 +17,7 @@ export const sanitizeInput = (data) => {
   return data;
 };
 
-export const validateEmailUnique = async (
-  prisma,
-  email,
-  excludeUserId = null
-) => {
+export const validateEmailUnique = async (email, excludeUserId = null) => {
   const existingUser = await prisma.user.findUnique({ where: { email } });
 
   if (existingUser && existingUser[id] != excludeUserId) {
