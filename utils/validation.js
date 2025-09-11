@@ -19,7 +19,7 @@ export const sanitizeInput = (data) => {
   return data;
 };
 
-export const checkEmailUnique = async (email, excludeUserId = null) => {
+export const validateEmailUnique = async (email, excludeUserId = null) => {
   const existingUser = await prisma.user.findUnique({ where: { email } });
 
   if (existingUser && existingUser[id] != excludeUserId) {
