@@ -22,7 +22,7 @@ export const validateEmailUnique = async (userEmail, excludeUserId = null) => {
     where: { email: userEmail },
   });
 
-  if (existingUser && existingUser[id] != excludeUserId) {
+  if (existingUser && existingUser.id !== excludeUserId) {
     return {
       valid: false,
       error: "Email already exists",
