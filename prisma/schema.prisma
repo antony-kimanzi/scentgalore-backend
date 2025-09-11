@@ -1,4 +1,5 @@
 generator client {
+  // removed output for generating prisma client
   provider = "prisma-client-js"
 }
 
