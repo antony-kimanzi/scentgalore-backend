@@ -1,5 +1,5 @@
 import z from "zod";
-import { sanitizeInput } from "../utils/validation";
+import { sanitizeInput } from "../utils/validation.js";
 
 export const validateRequest = (schema, part = "body") => {
   return (req, res, next) => {
