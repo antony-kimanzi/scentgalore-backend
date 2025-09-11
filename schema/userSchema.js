@@ -7,7 +7,7 @@ export const userSchema = z.object({
     .max(100, "Name cannot exceed 100 characters")
     .transform((name) => name.trim()),
 
-  LastName: z
+  lastName: z
     .string()
     .min(2, "Name must be at least 2 characters")
     .max(100, "Name cannot exceed 100 characters")
@@ -48,14 +48,12 @@ export const loginSchema = z.object({
     ),
 });
 
-export const updateUserSchema = userSchema.partial().extend({
-  id: z.number().int().positive("Id must be a positive integer"),
-});
+export const updateUserSchema = userSchema.partial();
 
 export const idParamSchema = z.object({
   id: z
     .string()
     .regex(/^\d+$/, "ID must be a numeric value")
     .transform((id) => parseInt(id, 10))
-    .refine((id) => id < 0, "ID must be a positive integer"),
+    .refine((id) => id > 0, "ID must be a positive integer"),
 });
