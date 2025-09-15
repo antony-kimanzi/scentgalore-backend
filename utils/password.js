@@ -18,7 +18,7 @@ export const passwordUtils = {
       const isMatch = await bcrypt.compare(plainPassword, hashedPassword);
       return isMatch;
     } catch (error) {
-      return new Error("Error comparing passwords");
+      throw new Error("Error comparing passwords");
     }
   },
 
