@@ -35,7 +35,7 @@ export const validateRequest = (schema, part = "body") => {
 };
 
 export const authenticateUser = (req, res, next) => {
-  const token = req.cookie.accessToken;
+  const token = req.cookies.accessToken;
 
   if (!token) {
     return res.status(401).json({ error: "Unauthorized user" });
