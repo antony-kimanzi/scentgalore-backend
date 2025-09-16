@@ -9,7 +9,12 @@ export const validateRequest = (schema, part = "body") => {
       const sanitizedData = sanitizeInput(req[part]);
       const validatedData = schema.parse(sanitizedData);
 
-      req.validatedData = validatedData;
+      if (part === "userId") {
+        req.userId = validatedData;
+      } else {
+        req.validatedData = validatedData;
+      }
+
       next();
     } catch (error) {
       if (error instanceof z.ZodError) {
