@@ -51,7 +51,7 @@ export const loginSchema = z.object({
 export const updateUserSchema = userSchema.partial();
 
 export const idParamSchema = z.object({
-  id: z
+  userId: z
     .string()
     .regex(/^\d+$/, "ID must be a numeric value")
     .transform((id) => parseInt(id, 10))
