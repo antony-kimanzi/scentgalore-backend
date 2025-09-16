@@ -1,5 +1,7 @@
 import z from "zod";
+import jwt from "jsonwebtoken";
 import { sanitizeInput } from "../utils/validation.js";
+import authConfig from "../config/authConfig.js";
 
 export const validateRequest = (schema, part = "body") => {
   return (req, res, next) => {
@@ -25,4 +27,20 @@ export const validateRequest = (schema, part = "body") => {
       res.status(500).json({ error: "Internal server error" });
     }
   };
+};
+
+export const authenticateUser = (req, res, next) => {
+  const token = req.cookie.accessToken;
+
+  if (!token) {
+    return res.status(401).json({ error: "Unauthorized user" });
+  }
+
+  try {
+    const decodedToken = jwt.verify(token, authConfig.secret);
+    req.userId = decodedToken.userId;
+    next();
+  } catch (error) {
+    return res.status(401).json({ error: error || null });
+  }
 };
