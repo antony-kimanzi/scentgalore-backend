@@ -9,11 +9,7 @@ export const validateRequest = (schema, part = "body") => {
       const sanitizedData = sanitizeInput(req[part]);
       const validatedData = schema.parse(sanitizedData);
 
-      if (part === "userId") {
-        req.userId = validatedData;
-      } else {
-        req.validatedData = validatedData;
-      }
+      req.validatedData = validatedData;
 
       next();
     } catch (error) {
