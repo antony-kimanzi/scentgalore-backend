@@ -26,7 +26,7 @@ model User {
 model Product {
   id               Int        @id @default(autoincrement())
   name             String     @unique @db.VarChar(255)
-  shortDescription String?    @map("short-description") @db.VarChar(50)
+  shortDescription String?    @map("short-description") @db.VarChar(100)
   description      String     @db.Text
   price            Decimal    @db.Decimal(10, 2)
   imageUrl         String     @map("image_url") @db.VarChar(500)
