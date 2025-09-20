@@ -19,7 +19,7 @@ app.use(cors());
 app.use("/api", mainRouter);
 
 const port = appConfig.port;
-const host = appConfig.port;
+const host = appConfig.host;
 
 app.listen(port, host, () =>
   console.log(`server started on http://${host}:${port}`)
