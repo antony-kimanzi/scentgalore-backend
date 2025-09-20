@@ -39,3 +39,5 @@ export const productSchema = z.object({
     .max(100, "Category should not exceed 100 characters")
     .transform((category) => category.toLowerCase().trim()),
 });
+
+export const updateProductSchema = productSchema.partial();
