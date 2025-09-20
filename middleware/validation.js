@@ -2,6 +2,7 @@ import z from "zod";
 import jwt from "jsonwebtoken";
 import { sanitizeInput } from "../utils/validation.js";
 import authConfig from "../config/authConfig.js";
+import prisma from "../lib/prisma.js";
 
 export const validateRequest = (schema, part = "body") => {
   return (req, res, next) => {
@@ -9,8 +10,11 @@ export const validateRequest = (schema, part = "body") => {
       const sanitizedData = sanitizeInput(req[part]);
       const validatedData = schema.parse(sanitizedData);
 
-      req.validatedData = validatedData;
-
+      if (part === "params") {
+        req.params = validatedData;
+      } else {
+        req.validatedData = validatedData;
+      }
       next();
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -30,7 +34,7 @@ export const validateRequest = (schema, part = "body") => {
   };
 };
 
-export const authenticateUser = (req, res, next) => {
+export const authenticateUser = async (req, res, next) => {
   const token = req.cookies.accessToken;
 
   if (!token) {
@@ -39,6 +43,14 @@ export const authenticateUser = (req, res, next) => {
 
   try {
     const decodedToken = jwt.verify(token, authConfig.secret);
+    const user = await prisma.user.findUnique({
+      where: { id: decodedToken.id },
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
     req.userId = decodedToken.id;
     next();
   } catch (error) {
