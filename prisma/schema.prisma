@@ -29,7 +29,7 @@ model Product {
   shortDescription String?     @map("short_description") @db.VarChar(100)
   description      String      @db.Text
   price            Decimal     @db.Decimal(10, 2)
-  imageUrl         String      @map("image_url") @db.VarChar(500)
+  imageUrl         String      @map("image_url") @db.VarChar(255)
   category         String      @db.VarChar(100)
   createdAt        DateTime    @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt        DateTime    @updatedAt @map("updated_at") @db.Timestamp(6)
@@ -67,15 +67,17 @@ model CartItem {
 }
 
 model Order {
-  id              Int         @id @default(autoincrement())
-  userId          Int         @unique @map("user_id")
-  totalAmount     Decimal     @map("total_amount") @db.Decimal(10, 2)
-  status          String      @default("pending") @db.VarChar(50)
-  shippingAddress String?     @map("shipping_address") @db.Text
-  paymentMethod   String      @map("payment_method") @db.VarChar(100)
-  createdAt       DateTime    @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt       DateTime    @updatedAt @map("updated_at") @db.Timestamp(6)
-  orderItems      OrderItem[]
+  id             Int             @id @default(autoincrement())
+  userId         Int             @unique @map("user_id")
+  totalAmount    Decimal         @map("total_amount") @db.Decimal(10, 2)
+  status         String          @default("pending") @db.VarChar(50)
+  paymentMethod  String          @map("payment_method") @db.VarChar(100)
+  shippingMethod String          @map("shipping_method") @db.VarChar(100)
+  createdAt      DateTime        @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt      DateTime        @updatedAt @map("updated_at") @db.Timestamp(6)
+  items          OrderItem[]
+  billing        BillingDetail?
+  shipping       ShippingDetail?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -95,4 +97,40 @@ model OrderItem {
 
   @@unique([orderId, productId])
   @@map("order_items")
+}
+
+model BillingDetail {
+  id          Int      @id @default(autoincrement())
+  orderId     Int      @map("order_id")
+  firstName   String   @map("first_name") @db.VarChar(50)
+  lastName    String   @map("last_name") @db.VarChar(50)
+  email       String   @unique @db.VarChar(100)
+  city        String   @db.VarChar(50)
+  phoneNumber Int      @map("phone_number")
+  apartment   String?  @db.VarChar(255)
+  postalCode  String?  @map("postal_code") @db.VarChar(50)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  order Order @relation(fields: [orderId], references: [id])
+
+  @@unique([orderId])
+  @@map("billing_details")
+}
+
+model ShippingDetail {
+  id          Int      @id @default(autoincrement())
+  orderId     Int      @map("order_id")
+  firstName   String   @map("first_name") @db.VarChar(50)
+  lastName    String   @map("last_name") @db.VarChar(50)
+  email       String   @unique @db.VarChar(100)
+  city        String   @db.VarChar(50)
+  phoneNumber Int      @map("phone_number")
+  apartment   String?  @db.VarChar(255)
+  postalCode  String?  @map("postal_code") @db.VarChar(50)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  order Order @relation(fields: [orderId], references: [id])
+
+  @@unique([orderId])
+  @@map("shipping_details")
 }
