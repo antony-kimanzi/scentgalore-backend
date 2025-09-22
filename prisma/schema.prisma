@@ -18,7 +18,7 @@ model User {
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
   Cart      Cart?
-  order     Order?
+  order     Order[]
 
   @@map("users")
 }
@@ -68,7 +68,7 @@ model CartItem {
 
 model Order {
   id             Int             @id @default(autoincrement())
-  userId         Int             @unique @map("user_id")
+  userId         Int             @map("user_id")
   totalAmount    Decimal         @map("total_amount") @db.Decimal(10, 2)
   status         String          @default("pending") @db.VarChar(50)
   paymentMethod  String          @map("payment_method") @db.VarChar(100)
