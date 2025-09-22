@@ -30,7 +30,7 @@ export const productSchema = z.object({
   imageUrl: z
     .string()
     .min(1, "Image url is required")
-    .max(100, "Image url should not exceed 100 characters")
+    .max(255, "Image url should not exceed 100 characters")
     .transform((imageUrl) => imageUrl.trim()),
 
   category: z
