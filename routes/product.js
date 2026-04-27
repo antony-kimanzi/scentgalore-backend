@@ -7,6 +7,7 @@ import { idParamSchema } from "../schema/paramSchema.js";
 const router = Router();
 
 router.post("/", validateRequest(productSchema), productController.addProduct);
+router.post("/many", productController.addManyProducts);
 
 router.get(
   "/:id",

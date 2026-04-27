@@ -1,7 +1,6 @@
 import { Router } from "express";
 import { idParamSchema } from "../schema/paramSchema.js";
-import { updateCartItemSchema } from "../schema/cartSchema.js";
-import { authenticateUser, validateRequest } from "../middleware/validation.js";
+import { verifyUser, validateRequest } from "../middleware/validation.js";
 import { cartController } from "../controllers/cart.js";
 import { cartItemController } from "../controllers/cartItem.js";
 
@@ -9,28 +8,34 @@ const router = Router();
 
 router.post(
   "/:id",
-  authenticateUser,
+  verifyUser,
   validateRequest(idParamSchema, "params"),
-  cartItemController.addItem
+  cartItemController.addItem,
 );
 
-router.get("/", authenticateUser, cartController.getCart);
+router.get("/", verifyUser, cartController.getCart);
 
 router.patch(
-  "/:id",
-  authenticateUser,
+  "/add/:id",
+  verifyUser,
   validateRequest(idParamSchema, "params"),
-  validateRequest(updateCartItemSchema),
-  cartItemController.updateItem
+  cartItemController.addItemQuantity,
 );
 
-router.delete("/", authenticateUser, cartController.deleteCart);
+router.patch(
+  "/subtract/:id",
+  verifyUser,
+  validateRequest(idParamSchema, "params"),
+  cartItemController.subtractItemQuantity,
+);
+
+router.delete("/", verifyUser, cartController.deleteCart);
 
 router.delete(
   "/:id",
-  authenticateUser,
+  verifyUser,
   validateRequest(idParamSchema, "params"),
-  cartItemController.deleteItem
+  cartItemController.deleteItem,
 );
 
 export default router;

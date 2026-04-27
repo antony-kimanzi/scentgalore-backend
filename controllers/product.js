@@ -3,41 +3,60 @@ import prisma from "../lib/prisma.js";
 export const productController = {
   async addProduct(req, res) {
     try {
-      const product = req.validatedData;
+      const productData = req.validatedData;
 
       const existingProduct = await prisma.product.findUnique({
-        where: { name: product.name },
+        where: { name: productData.name },
       });
       if (existingProduct) {
         return res.status(409).json({ error: "Product already exists" });
       }
 
-      const newProduct = await prisma.product.create({
+      const product = await prisma.product.create({
         data: {
+          name: productData.name,
+          shortDescription: productData.shortDescription,
+          description: productData.description,
+          price: productData.price,
+          imageUrl: productData.imageUrl,
+          category: productData.category,
+          tone: productData.tone,
+          stock: productData.stock,
+        },
+      });
+
+      return res.status(201).json({ product });
+    } catch (error) {
+      console.log(error);
+      res
+        .status(500)
+        .json({ msg: "Internal server error", error: error || null });
+    }
+  },
+
+  async addManyProducts(req, res) {
+    try {
+      const products = req.body;
+
+      if (products.length === 0) {
+        return res.status(404).json({ error: "Products not found" });
+      }
+
+      await prisma.product.createMany({
+        data: products.map((product) => ({
           name: product.name,
           shortDescription: product.shortDescription,
           description: product.description,
           price: product.price,
           imageUrl: product.imageUrl,
           category: product.category,
-        },
-        select: {
-          id: true,
-          shortDescription: true,
-          description: true,
-          price: true,
-          imageUrl: true,
-          category: true,
-          createdAt: true,
-        },
+        })),
+        skipDuplicates: true,
       });
 
-      return res.status(201).json({ newProduct });
+      return res.status(201).json({ success: true });
     } catch (error) {
-      console.log(error);
-      res
-        .status(500)
-        .json({ msg: "Internal server error", error: error || null });
+      return res.status(500).json({ error: "Internal server error", error });
     }
   },
 
@@ -53,7 +72,9 @@ export const productController = {
           description: true,
           price: true,
           imageUrl: true,
+          tone: true,
           category: true,
+          stock: true,
         },
       });
 
@@ -69,13 +90,27 @@ export const productController = {
 
   async getAllProducts(req, res) {
     try {
-      const products = await prisma.product.findMany();
+      const products = await prisma.product.findMany({
+        select: {
+          id: true,
+          name: true,
+          shortDescription: true,
+          description: true,
+          price: true,
+          imageUrl: true,
+          tone: true,
+          stock: true,
+          category: true, // ADD THIS LINE
+          createdAt: true,
+          updatedAt: true,
+        },
+      });
 
       if (products.length === 0) {
         return res.status(404).json({ message: "No product found" });
       }
 
-      return res.status(200).json(products);
+      return res.status(200).json({ products });
     } catch (error) {
       return res.status(500).json({ error: "Internal server error" });
     }
@@ -84,32 +119,32 @@ export const productController = {
   async updateProduct(req, res) {
     try {
       const id = req.params.id;
-      const { updatedData } = req.validatedData;
+      const updatedData = req.validatedData;
+      console.log(updatedData);
 
-      const product = await prisma.product.findUnique({
+      const existingProduct = await prisma.product.findUnique({
         where: { id },
       });
 
-      if (!product) {
+      if (!existingProduct) {
         return res.status(404).json({ error: "Product not found" });
       }
 
-      const updatedProduct = await prisma.product.update({
+      const product = await prisma.product.update({
         where: { id },
-        data: { updatedData },
-        select: {
-          id: true,
-          name: true,
-          shortDescription: true,
-          description: true,
-          price: true,
-          imageUrl: true,
-          category: true,
-          updatedAt: true,
+        data: {
+          name: updatedData.name,
+          shortDescription: updatedData.shortDescription,
+          description: updatedData.description,
+          price: updatedData.price,
+          imageUrl: updatedData.imageUrl,
+          category: updatedData.category,
+          tone: updatedData.tone,
+          stock: updatedData.stock,
         },
       });
 
-      return res.status(200).json(updatedProduct);
+      return res.status(201).json({ product });
     } catch (error) {
       console.log(error);
       return res.status(500).json({ error: "Internal server error" });
@@ -128,7 +163,7 @@ export const productController = {
 
       await prisma.product.delete({ where: { id } });
 
-      return res.status(204).end();
+      return res.status(204).json({ success: true });
     } catch (error) {
       return res.status(500).json({ error: "Internal server error" });
     }

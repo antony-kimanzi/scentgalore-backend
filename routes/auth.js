@@ -1,28 +1,32 @@
 import { authController } from "../controllers/auth.js";
 import { Router } from "express";
-import { authenticateUser, validateRequest } from "../middleware/validation.js";
+import { requireAuth, validateRequest } from "../middleware/validation.js";
 import {
+  googleAuthSchema,
   loginSchema,
-  userSchema,
+  registerSchema,
 } from "../schema/userSchema.js";
+import { googleAuthController } from "../controllers/googleAuth.js";
 
 const router = Router();
 
 router.post(
   "/login",
   validateRequest(loginSchema, "body"),
-  authController.login
+  authController.login,
 );
 router.post(
   "/register",
-  validateRequest(userSchema, "body"),
-  authController.register
+  validateRequest(registerSchema, "body"),
+  authController.register,
 );
 
+router.post("/logout", requireAuth, authController.logout);
+
 router.post(
-  "/logout",
-  authenticateUser,
-  authController.logout
+  "/google",
+  validateRequest(googleAuthSchema, "body"),
+  googleAuthController.authenticate,
 );
 
 export default router;

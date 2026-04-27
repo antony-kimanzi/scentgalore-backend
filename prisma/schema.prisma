@@ -1,6 +1,7 @@
 generator client {
   // removed output for generating prisma client
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
 }
 
 datasource db {
@@ -8,28 +9,46 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// Update User model to include processed payments relationship
 model User {
   id        Int      @id @default(autoincrement())
   username  String?  @unique @db.VarChar(50)
   email     String   @unique @db.VarChar(100)
-  password  String   @db.VarChar(255)
+  password  String?  @db.VarChar(255)
+  googleId  String?  @unique
   firstName String   @map("first_name") @db.VarChar(50)
   lastName  String   @map("last_name") @db.VarChar(50)
+  role      String   @default("client") @db.VarChar(20)
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
-  Cart      Cart?
-  order     Order[]
+
+  Cart     Cart?
+  order    Order[]
+  payments Payment[] @relation("ProcessedPayments") // Payments processed by this admin
 
   @@map("users")
+}
+
+model Guest {
+  id        String   @id
+  email     String?
+  createdAt DateTime @default(now())
+
+  cart   Cart?
+  orders Order[]
+
+  @@map("guests")
 }
 
 model Product {
   id               Int         @id @default(autoincrement())
   name             String      @unique @db.VarChar(255)
-  shortDescription String?     @map("short_description") @db.VarChar(100)
-  description      String      @db.Text
+  shortDescription String?     @map("short_description") @db.VarChar(255)
+  description      String?     @db.Text
   price            Decimal     @db.Decimal(10, 2)
-  imageUrl         String      @map("image_url") @db.VarChar(255)
+  imageUrl         String?     @map("image_url") @db.VarChar(255)
+  tone             String      @db.VarChar(100)
+  stock            Int?        @default(0)
   category         String      @db.VarChar(100)
   createdAt        DateTime    @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt        DateTime    @updatedAt @map("updated_at") @db.Timestamp(6)
@@ -41,11 +60,13 @@ model Product {
 
 model Cart {
   id        Int      @id @default(autoincrement())
-  userId    Int      @unique @map("user_id")
+  userId    Int?     @unique @map("user_id")
+  guestId   String?  @unique @map("guest_id")
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
 
-  user  User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user  User?      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  guest Guest?     @relation(fields: [guestId], references: [id], onDelete: Cascade)
   items CartItem[]
 
   @@map("carts")
@@ -62,26 +83,67 @@ model CartItem {
   cart    Cart    @relation(fields: [cartId], references: [id], onDelete: Cascade)
   product Product @relation(fields: [productId], references: [id])
 
-  @@unique([cartId, productId])
   @@map("cart_items")
 }
 
 model Order {
-  id             Int             @id @default(autoincrement())
-  userId         Int             @map("user_id")
-  totalAmount    Decimal         @map("total_amount") @db.Decimal(10, 2)
-  status         String          @default("pending") @db.VarChar(50)
-  paymentMethod  String          @map("payment_method") @db.VarChar(100)
-  shippingMethod String          @map("shipping_method") @db.VarChar(100)
-  createdAt      DateTime        @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt      DateTime        @updatedAt @map("updated_at") @db.Timestamp(6)
-  items          OrderItem[]
-  billing        BillingDetail?
-  shipping       ShippingDetail?
+  id             Int     @id @default(autoincrement())
+  userId         Int?    @map("user_id")
+  guestId        String? @map("guest_id")
+  isPaid         Boolean @default(false) @map("is_paid")
+  contact        String  @db.VarChar(100)
+  totalAmount    Decimal @map("total_amount") @db.Decimal(10, 2)
+  status         String  @default("pending") @db.VarChar(50)
+  paymentMethod  String  @map("payment_method") @db.VarChar(100)
+  shippingMethod String  @map("shipping_method") @db.VarChar(100)
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Payment relationship - optional one-to-one
+  payment Payment?
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  items    OrderItem[]
+  billing  BillingDetail?
+  shipping ShippingDetail?
+  user     User?           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  guest    Guest?          @relation(fields: [guestId], references: [id], onDelete: Cascade)
 
   @@map("orders")
+}
+
+model Payment {
+  id      Int   @id @default(autoincrement())
+  orderId Int   @unique @map("order_id") // One-to-one with Order
+  order   Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  // M-Pesa payment fields
+  checkoutRequestID String?   @unique @map("checkout_request_id") @db.VarChar(100)
+  mpesaReceipt      String?   @unique @map("mpesa_receipt") @db.VarChar(50)
+  paymentPhone      String?   @map("payment_phone") @db.VarChar(20)
+  paymentAmount     Decimal?  @map("payment_amount") @db.Decimal(10, 2)
+  paymentDate       DateTime? @map("payment_date") @db.Timestamp(6)
+  paymentError      String?   @map("payment_error") @db.Text
+  paymentStatus     String    @default("pending") @db.VarChar(50) // pending, completed, failed, cancelled
+
+  // Additional payment tracking fields
+  transactionType   String? @map("transaction_type") @db.VarChar(50) // M-Pesa, card, etc.
+  merchantRequestID String? @unique @map("merchant_request_id") @db.VarChar(100)
+  resultCode        String? @map("result_code") @db.VarChar(10)
+  resultDesc        String? @map("result_desc") @db.VarChar(255)
+
+  // Admin tracking
+  processedBy Int?      @map("processed_by") // Admin user ID who processed/verified
+  processedAt DateTime? @map("processed_at") @db.Timestamp(6)
+  notes       String?   @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  // Relationships
+  processedByUser User? @relation("ProcessedPayments", fields: [processedBy], references: [id])
+
+  @@map("payments")
 }
 
 model OrderItem {
@@ -104,14 +166,11 @@ model BillingDetail {
   orderId     Int      @map("order_id")
   firstName   String   @map("first_name") @db.VarChar(50)
   lastName    String   @map("last_name") @db.VarChar(50)
-  email       String   @unique @db.VarChar(100)
-  city        String   @db.VarChar(50)
+  email       String?  @db.VarChar(100)
   phoneNumber String   @map("phone_number")
-  apartment   String?  @db.VarChar(255)
-  postalCode  String?  @map("postal_code") @db.VarChar(50)
   createdAt   DateTime @default(now()) @map("created_at") @db.Timestamp(6)
 
-  order Order @relation(fields: [orderId], references: [id])
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
   @@unique([orderId])
   @@map("billing_details")
@@ -122,15 +181,22 @@ model ShippingDetail {
   orderId     Int      @map("order_id")
   firstName   String   @map("first_name") @db.VarChar(50)
   lastName    String   @map("last_name") @db.VarChar(50)
-  email       String   @unique @db.VarChar(100)
+  email       String   @db.VarChar(100)
   city        String   @db.VarChar(50)
   phoneNumber String   @map("phone_number")
   apartment   String?  @db.VarChar(255)
   postalCode  String?  @map("postal_code") @db.VarChar(50)
   createdAt   DateTime @default(now()) @map("created_at") @db.Timestamp(6)
 
-  order Order @relation(fields: [orderId], references: [id])
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
   @@unique([orderId])
   @@map("shipping_details")
+}
+
+model OrderAccessToken {
+  id        String   @id @default(uuid())
+  guestId   String
+  token     String   @unique
+  expiresAt DateTime
 }

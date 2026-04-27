@@ -10,8 +10,9 @@ export const productSchema = z.object({
   shortDescription: z
     .string()
     .min(5, "Short description must be at least 5 characters")
-    .max(100, "Short description should not exceed 50 characters")
-    .transform((shortDescription) => shortDescription.trim()),
+    .max(255, "Short description should not exceed 50 characters")
+    .transform((shortDescription) => shortDescription.trim())
+    .optional(),
 
   description: z
     .string()
@@ -38,6 +39,20 @@ export const productSchema = z.object({
     .min(3, "Category must be at least 3 characters")
     .max(100, "Category should not exceed 100 characters")
     .transform((category) => category.toLowerCase().trim()),
+  tone: z
+    .string()
+    .min(3, "tone must be at least 3 characters")
+    .max(100, "tone should not exceed 100 characters")
+    .transform((tone) => tone.toLowerCase().trim()),
+  stock: z
+    .number()
+    .min(0, "stock must start from 0")
+    .max(999999.99, "stock cannot exceed 999,999.99")
+    .refine((value) => {
+      const decimalPart = value.toString().split(".")[1];
+      return !decimalPart;
+    }, "Stock can't be a decimal number")
+    .optional(),
 });
 
 export const updateProductSchema = productSchema.partial();

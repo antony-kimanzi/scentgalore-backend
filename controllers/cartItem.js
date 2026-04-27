@@ -3,92 +3,344 @@ import prisma from "../lib/prisma.js";
 export const cartItemController = {
   async addItem(req, res) {
     try {
-      const id = req.userId;
+      const currentUserId = req.userId;
+      const guestId = req.guestId;
       const productId = req.params.id;
 
-      let userCart;
-      userCart = await prisma.cart.findUnique({ where: { userId: id } });
+      let user;
+      let guest;
 
-      if (!userCart) {
-        userCart = await prisma.cart.create({
-          data: {
-            userId: id,
-          },
-          select: {
-            id: true,
-            userId: true,
-            createdAt: true,
+      if (currentUserId) {
+        user = await prisma.user.findUnique({
+          where: { id: currentUserId },
+        });
+      } else {
+        guest = await prisma.guest.findUnique({
+          where: {
+            id: guestId,
           },
         });
       }
 
-      const product = await prisma.product.findUnique({
-        where: { id: productId },
-      });
+      if (user) {
+        let userCart;
+        userCart = await prisma.cart.findUnique({ where: { userId: user.id } });
 
-      if (!product) {
-        return res.status(404).json({ error: "Product not found" });
+        if (!userCart) {
+          userCart = await prisma.cart.create({
+            data: {
+              userId: user.id,
+            },
+            select: {
+              id: true,
+              userId: true,
+              createdAt: true,
+            },
+          });
+        }
+
+        const product = await prisma.product.findUnique({
+          where: { id: productId },
+        });
+
+        if (!product) {
+          return res.status(404).json({ error: "Product not found" });
+        }
+
+        const item = await prisma.cartItem.create({
+          data: {
+            cartId: userCart.id,
+            productId: product.id,
+            quantity: 1,
+            price: product.price,
+          },
+
+          include: {
+            product: {
+              select: {
+                id: true,
+                name: true,
+                shortDescription: true,
+                description: true,
+                price: true,
+                imageUrl: true,
+                category: true,
+              },
+            },
+          },
+        });
+
+        return res.status(201).json({ item });
+      } else if (guest) {
+        let userCart;
+        userCart = await prisma.cart.findUnique({
+          where: { guestId: guest.id },
+        });
+
+        if (!userCart) {
+          userCart = await prisma.cart.create({
+            data: {
+              guestId: guest.id,
+            },
+            select: {
+              id: true,
+              userId: true,
+              createdAt: true,
+            },
+          });
+        }
+
+        const product = await prisma.product.findUnique({
+          where: { id: productId },
+        });
+
+        if (!product) {
+          return res.status(404).json({ error: "Product not found" });
+        }
+
+        const item = await prisma.cartItem.create({
+          data: {
+            cartId: userCart.id,
+            productId: product.id,
+            quantity: 1,
+            price: product.price,
+          },
+
+          include: {
+            product: {
+              select: {
+                id: true,
+                name: true,
+                shortDescription: true,
+                description: true,
+                price: true,
+                imageUrl: true,
+                category: true,
+              },
+            },
+          },
+        });
+
+        return res.status(201).json({ item });
+      } else {
+        return res.status(404).json({ error: "User not found" });
       }
-
-      const createdItem = await prisma.cartItem.create({
-        data: {
-          cartId: userCart.id,
-          productId: product.id,
-          quantity: 1,
-          price: product.price,
-        },
-        select: {
-          id: true,
-          cartId: true,
-          productId: true,
-          quantity: true,
-          price: true,
-          createdAt: true,
-        },
-      });
-
-      return res.status(201).json(createdItem);
     } catch (error) {
       console.log(error);
       return res.status(500).json({ error: "Internal server error" });
     }
   },
 
-  async updateItem(req, res) {
+  async addItemQuantity(req, res) {
     try {
-      const id = req.userId;
-      const productId = req.params.id;
-      const { quantity } = req.validatedData;
+      const currentUserId = req.userId;
+      const guestId = req.guestId;
+      const cartItemId = req.params.id;
 
-      const userCart = await prisma.cart.findUnique({ where: { userId: id } });
+      let user;
+      let guest;
 
-      if (!userCart) {
-        return res.status(404).json({ error: "User has no cart" });
+      if (currentUserId) {
+        user = await prisma.user.findUnique({
+          where: { id: currentUserId },
+        });
+      } else {
+        guest = await prisma.guest.findUnique({
+          where: {
+            id: guestId,
+          },
+        });
       }
 
-      const existingItem = await prisma.cartItem.findFirst({
-        where: { cartId: userCart.id, productId: productId },
-      });
+      if (user) {
+        const userCart = await prisma.cart.findUnique({
+          where: { userId: user.id },
+        });
 
-      if (!existingItem) {
-        return res.status(404).json({ error: "Cart item not found" });
+        if (!userCart) {
+          return res.status(404).json({ error: "User has no cart" });
+        }
+
+        const existingItem = await prisma.cartItem.findUnique({
+          where: { id: cartItemId },
+        });
+
+        if (!existingItem) {
+          return res.status(404).json({ error: "Cart item not found" });
+        }
+
+        const quantity = existingItem.quantity + 1;
+
+        const item = await prisma.cartItem.update({
+          where: { id: existingItem.id },
+          data: { quantity: quantity },
+
+          include: {
+            product: {
+              select: {
+                id: true,
+                name: true,
+                shortDescription: true,
+                description: true,
+                price: true,
+                imageUrl: true,
+                category: true,
+              },
+            },
+          },
+        });
+
+        return res.status(200).json({ item });
+      } else if (guest) {
+        const userCart = await prisma.cart.findUnique({
+          where: { guestId: guest.id },
+        });
+
+        if (!userCart) {
+          return res.status(404).json({ error: "User has no cart" });
+        }
+
+        const existingItem = await prisma.cartItem.findUnique({
+          where: { id: cartItemId },
+        });
+
+        if (!existingItem) {
+          return res.status(404).json({ error: "Cart item not found" });
+        }
+
+        const quantity = existingItem.quantity + 1;
+
+        const item = await prisma.cartItem.update({
+          where: { id: existingItem.id },
+          data: { quantity: quantity },
+
+          include: {
+            product: {
+              select: {
+                id: true,
+                name: true,
+                shortDescription: true,
+                description: true,
+                price: true,
+                imageUrl: true,
+                category: true,
+              },
+            },
+          },
+        });
+
+        return res.status(200).json({ item });
+      } else {
+        return res.status(404).json({ error: "User not found" });
+      }
+    } catch (error) {
+      console.log(error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  },
+
+  async subtractItemQuantity(req, res) {
+    try {
+      const currentUserId = req.userId;
+      const guestId = req.guestId;
+      const cartItemId = req.params.id;
+
+      let user;
+      let guest;
+
+      if (currentUserId) {
+        user = await prisma.user.findUnique({
+          where: { id: currentUserId },
+        });
+      } else {
+        guest = await prisma.guest.findUnique({
+          where: {
+            id: guestId,
+          },
+        });
       }
 
-      const newPrice = existingItem.price * quantity;
-      const updatedItem = await prisma.cartItem.update({
-        where: { id: existingItem.id },
-        data: { quantity: quantity, price: newPrice },
-        select: {
-          id: true,
-          cartId: true,
-          productId: true,
-          quantity: true,
-          price: true,
-          createdAt: true,
-        },
-      });
+      if (user) {
+        const userCart = await prisma.cart.findUnique({
+          where: { userId: user.id },
+        });
 
-      return res.status(200).json(updatedItem);
+        if (!userCart) {
+          return res.status(404).json({ error: "User has no cart" });
+        }
+
+        const existingItem = await prisma.cartItem.findUnique({
+          where: { id: cartItemId },
+        });
+
+        if (!existingItem) {
+          return res.status(404).json({ error: "Cart item not found" });
+        }
+
+        const quantity = existingItem.quantity - 1;
+
+        const item = await prisma.cartItem.update({
+          where: { id: existingItem.id },
+          data: { quantity: quantity },
+
+          include: {
+            product: {
+              select: {
+                id: true,
+                name: true,
+                shortDescription: true,
+                description: true,
+                price: true,
+                imageUrl: true,
+                category: true,
+              },
+            },
+          },
+        });
+
+        return res.status(200).json({ item });
+      } else if (guest) {
+        const userCart = await prisma.cart.findUnique({
+          where: { guestId: guest.id },
+        });
+
+        if (!userCart) {
+          return res.status(404).json({ error: "User has no cart" });
+        }
+
+        const existingItem = await prisma.cartItem.findUnique({
+          where: { id: cartItemId },
+        });
+
+        if (!existingItem) {
+          return res.status(404).json({ error: "Cart item not found" });
+        }
+
+        const quantity = existingItem.quantity - 1;
+
+        const item = await prisma.cartItem.update({
+          where: { id: existingItem.id },
+          data: { quantity: quantity },
+
+          include: {
+            product: {
+              select: {
+                id: true,
+                name: true,
+                shortDescription: true,
+                description: true,
+                price: true,
+                imageUrl: true,
+                category: true,
+              },
+            },
+          },
+        });
+
+        return res.status(200).json({ item });
+      } else {
+        return res.status(404).json({ error: "User not found" });
+      }
     } catch (error) {
       console.log(error);
       return res.status(500).json({ error: "Internal server error" });
@@ -97,26 +349,68 @@ export const cartItemController = {
 
   async deleteItem(req, res) {
     try {
-      const id = req.userId;
-      const productId = req.params.id;
+      const currentUserId = req.userId;
+      const guestId = req.guestId;
+      const cartItemId = req.params.id;
 
-      const userCart = await prisma.cart.findUnique({ where: { userId: id } });
+      let user;
+      let guest;
 
-      if (!userCart) {
-        return res.status(404).json({ error: "User has no cart" });
+      if (currentUserId) {
+        user = await prisma.user.findUnique({
+          where: { id: currentUserId },
+        });
+      } else {
+        guest = await prisma.guest.findUnique({
+          where: {
+            id: guestId,
+          },
+        });
       }
 
-      const existingItem = await prisma.cartItem.findFirst({
-        where: { cartId: userCart.id, productId: productId },
-      });
+      if (user) {
+        const userCart = await prisma.cart.findUnique({
+          where: { userId: user.id },
+        });
 
-      if (!existingItem) {
-        return res.status(404).json({ error: "Cart item not found" });
+        if (!userCart) {
+          return res.status(404).json({ error: "User has no cart" });
+        }
+
+        const existingItem = await prisma.cartItem.findUnique({
+          where: { id: cartItemId },
+        });
+
+        if (!existingItem) {
+          return res.status(404).json({ error: "Cart item not found" });
+        }
+
+        await prisma.cartItem.delete({ where: { id: existingItem.id } });
+
+        return res.status(204).json({ success: true });
+      } else if (guest) {
+        const userCart = await prisma.cart.findUnique({
+          where: { guestId: guest.id },
+        });
+
+        if (!userCart) {
+          return res.status(404).json({ error: "User has no cart" });
+        }
+
+        const existingItem = await prisma.cartItem.findUnique({
+          where: { id: cartItemId },
+        });
+
+        if (!existingItem) {
+          return res.status(404).json({ error: "Cart item not found" });
+        }
+
+        await prisma.cartItem.delete({ where: { id: existingItem.id } });
+
+        return res.status(204).json({ success: true });
+      } else {
+        return res.status(404).json({ error: "User not found" });
       }
-
-      await prisma.cartItem.delete({ where: { id: existingItem.id } });
-
-      return res.status(204).end();
     } catch (error) {
       return res.status(500).json({ error: "Internal server error" });
     }

@@ -1,3 +1,4 @@
+// controllers/auth.js
 import prisma from "../lib/prisma.js";
 import { passwordUtils } from "../utils/password.js";
 import jwt from "jsonwebtoken";
@@ -9,21 +10,39 @@ export const authController = {
     try {
       const { email, password } = req.validatedData;
 
-      const user = await prisma.user.findUnique({
+      const existingUser = await prisma.user.findUnique({
         where: { email },
         select: {
           id: true,
+          username: true,
           firstName: true,
           lastName: true,
           email: true,
           password: true,
+          googleId: true,
+          role: true,
           createdAt: true,
+          updatedAt: true,
         },
       });
 
-      if (!user) {
+      if (!existingUser) {
         return res.status(404).json({
           error: "User not found",
+        });
+      }
+
+      // Prevent admin from logging in if they have googleId
+      if (existingUser.googleId && existingUser.role === "admin") {
+        return res.status(403).json({
+          error: "Admin accounts cannot use Google login",
+        });
+      }
+
+      // Check if this is a Google-only user
+      if (existingUser.googleId && !existingUser.password) {
+        return res.status(409).json({
+          error: "This account uses Google login. Please sign in with Google",
         });
       }
 
@@ -31,29 +50,41 @@ export const authController = {
       try {
         correctPassword = await passwordUtils.comparePassword(
           password,
-          user.password
+          existingUser.password
         );
       } catch (error) {
         return res.status(500).json({ error: "Authentication error" });
       }
 
       if (!correctPassword) {
-        return res.status(409).json({ error: "Incorrect password" });
+        return res.status(409).json({ error: "Invalid Credentials" });
       }
 
-      const accessToken = jwt.sign({ id: user.id }, authConfig.secret, {
-        expiresIn: authConfig.expiresIn,
-      });
+      const { password: _, ...userWithoutPassword } = existingUser;
+
+      const user = userWithoutPassword;
+
+      const accessToken = jwt.sign(
+        {
+          id: user.id,
+          role: user.role,
+        },
+        authConfig.secret,
+        {
+          expiresIn: authConfig.expiresIn,
+        }
+      );
 
       res.cookie("accessToken", accessToken, {
-        httpOnly: true, // Ensure the cookie cannot be accessed via JavaScript (security against XSS attacks)
-        secure: process.env.NODE_ENV === "production", // Set to true in production for HTTPS-only cookies
-        maxAge: 1440 * 60 * 1000, // 1440 minutes (24 hours) in mileseconds
-        sameSite: "strict", // Ensures the cookie is sent only with requests from the same site
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        maxAge: 1440 * 60 * 1000,
+        sameSite: "strict",
       });
 
       return res.status(200).json({ user });
     } catch (error) {
+      console.log("error: ", error);
       return res.status(500).json({
         message: "Internal server error",
         error: error || null,
@@ -65,9 +96,9 @@ export const authController = {
     try {
       const { email, firstName, lastName, password } = req.validatedData;
 
-      const user = await prisma.user.findFirst({ where: { email } });
+      const existingUser = await prisma.user.findFirst({ where: { email } });
 
-      if (user) {
+      if (existingUser) {
         return res.status(409).json({
           error: "User already exists. Please login",
         });
@@ -85,39 +116,134 @@ export const authController = {
         data: {
           firstName: firstName,
           lastName: lastName,
+          username: firstName,
           email: email,
           password: hashedPassword,
+          role: "client", // All registered users are clients
         },
       });
 
-      const createdUser = await prisma.user.findUnique({
+      const user = await prisma.user.findUnique({
         where: { email },
         select: {
           id: true,
           firstName: true,
           lastName: true,
           email: true,
-          password: true,
+          role: true,
           createdAt: true,
         },
       });
 
-      const accessToken = jwt.sign({ id: createdUser.id }, authConfig.secret, {
-        expiresIn: authConfig.expiresIn,
-      });
+      const accessToken = jwt.sign(
+        {
+          id: user.id,
+          role: user.role,
+        },
+        authConfig.secret,
+        {
+          expiresIn: authConfig.expiresIn,
+        }
+      );
 
       res.cookie("accessToken", accessToken, {
-        httpOnly: true, // Ensure the cookie cannot be accessed via JavaScript (security against XSS attacks)
-        secure: process.env.NODE_ENV === "production", // Set to true in production for HTTPS-only cookies
-        maxAge: 1440 * 60 * 1000, // 1440 minutes (24 hours) in mileseconds
-        sameSite: "strict", // Ensures the cookie is sent only with requests from the same site
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        maxAge: 1440 * 60 * 1000,
+        sameSite: "strict",
       });
 
-      return res.status(201).json({ createdUser, token });
+      return res.status(201).json({ user });
     } catch (error) {
-      return res
-        .status(500)
-        .json({ message: "Internal server error", error: error || null });
+      console.error("Registration error:", error);
+      res.status(500).json({
+        message: "Internal server error",
+        error: error.message,
+      });
+    }
+  },
+
+  async googleCallback(req, res) {
+    try {
+      const { googleId, email, firstName, lastName } = req.body;
+
+      // Check if user exists
+      let user = await prisma.user.findFirst({
+        where: {
+          OR: [{ email }, { googleId }],
+        },
+      });
+
+      if (user) {
+        // If user exists and is an admin, block Google login
+        if (user.role === "admin") {
+          return res.status(403).json({
+            error: "Admin accounts cannot use Google login",
+          });
+        }
+
+        // Update existing user with googleId if not already set
+        if (!user.googleId) {
+          user = await prisma.user.update({
+            where: { id: user.id },
+            data: { googleId },
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+              role: true,
+              googleId: true,
+            },
+          });
+        }
+      } else {
+        // Create new user with Google auth
+        user = await prisma.user.create({
+          data: {
+            email,
+            firstName,
+            lastName,
+            username: firstName,
+            googleId,
+            role: "client", // Google users are always clients
+          },
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+            role: true,
+            googleId: true,
+          },
+        });
+      }
+
+      const accessToken = jwt.sign(
+        {
+          id: user.id,
+          role: user.role,
+        },
+        authConfig.secret,
+        {
+          expiresIn: authConfig.expiresIn,
+        }
+      );
+
+      res.cookie("accessToken", accessToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        maxAge: 1440 * 60 * 1000,
+        sameSite: "strict",
+      });
+
+      return res.status(200).json({ user });
+    } catch (error) {
+      console.error("Google callback error:", error);
+      return res.status(500).json({
+        message: "Internal server error",
+        error: error.message,
+      });
     }
   },
 
@@ -129,7 +255,7 @@ export const authController = {
         sameSite: "strict",
       });
 
-      return res.status(204).end();
+      return res.status(204).json({ success: true });
     } catch (error) {
       res.status(500).json({ error: "Internal server error" });
     }

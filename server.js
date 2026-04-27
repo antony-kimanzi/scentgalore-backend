@@ -7,13 +7,56 @@ import cookieParser from "cookie-parser";
 
 const app = express();
 
-// MIDDLEWARE //
+// CORS configuration - make it more permissive for testing
+// In server.js, update CORS:
+const corsOptions = {
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
 
+    // Allow all localhost origins
+    if (/^http:\/\/localhost(:\d+)?$/.test(origin)) {
+      return callback(null, true);
+    }
+
+    // Add your production domain here
+    callback(null, true); // For now, allow all origins for testing
+  },
+  credentials: true,
+  methods: ["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: [
+    "Content-Type",
+    "Authorization",
+    "Accept",
+    "Origin",
+    "X-Requested-With",
+  ],
+  exposedHeaders: ["Set-Cookie"],
+  maxAge: 86400,
+};
+
+// MIDDLEWARE //
+app.use(cors(corsOptions)); // Apply CORS first
 app.use(express.json());
 app.use(morgan("dev"));
 app.use(cookieParser());
+app.use(express.urlencoded({ extended: true }));
 
-app.use(cors());
+// Test route to verify server is working
+app.get("/", (req, res) => {
+  res.json({
+    message: "Backend server is running!",
+    timestamp: new Date().toISOString(),
+  });
+});
+
+// Health check endpoint
+app.get("/api/health", (req, res) => {
+  res.json({
+    status: "Server is running",
+    timestamp: new Date().toISOString(),
+  });
+});
 
 // ROUTES //
 app.use("/api", mainRouter);
