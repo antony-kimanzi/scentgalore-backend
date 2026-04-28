@@ -61,9 +61,8 @@ app.get("/api/health", (req, res) => {
 // ROUTES //
 app.use("/api", mainRouter);
 
-const port = appConfig.port;
-const host = appConfig.host;
+const PORT = appConfig.port;
 
-app.listen(port, host, () =>
-  console.log(`server started on http://${host}:${port}`)
-);
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`server started on http://0.0.0.0:${PORT}`);
+});
