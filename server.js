@@ -14,13 +14,26 @@ const corsOptions = {
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
 
-    // Allow all localhost origins
-    if (/^http:\/\/localhost(:\d+)?$/.test(origin)) {
-      return callback(null, true);
-    }
+    // List of allowed origins
+    const allowedOrigins = [
+      /^http:\/\/localhost(:\d+)?$/, // Local development
+      /^https:\/\/localhost(:\d+)?$/, // HTTPS local development
+      /^https?:\/\/scentgalore\.vercel\.app$/, // Your Vercel preview URL
+      /^https?:\/\/.*\.vercel\.app$/, // All Vercel preview URLs (optional)
+      "https://your-custom-domain.com", // Add your custom domain when you have one
+    ];
 
-    // Add your production domain here
-    callback(null, true); // For now, allow all origins for testing
+    // Check if origin matches any allowed pattern
+    const isAllowed = allowedOrigins.some((pattern) => {
+      if (typeof pattern === "string") return origin === pattern;
+      return pattern.test(origin);
+    });
+
+    if (isAllowed) {
+      callback(null, true);
+    } else {
+      callback(new Error(`CORS blocked: ${origin} not allowed`));
+    }
   },
   credentials: true,
   methods: ["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
