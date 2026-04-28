@@ -17,7 +17,6 @@ const appConfig = {
   authURL: process.env.MPESA_AUTH_URL,
   stkPushURL: process.env.MPESA_STK_PUSH_URL,
   port: process.env.PORT || 3000,
-  host: process.env.HOST || "localhost",
 };
 
 export default appConfig;
